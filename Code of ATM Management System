@@ -1,119 +1,122 @@
 #include <iostream>
 #include <vector>
 #include <string>
+
 using namespace std;
 
-// Global variables
-float balance = 1000.0;
-vector<string> history;
-int PIN = 1234;
+// 1. ABSTRACTION: Using an abstract class to define the interface
+// The user doesn't need to know how transactions are stored, only that they can happen.
+class IATM {
+public:
+    virtual void showMenu() = 0; // Pure virtual function
+    virtual ~IATM() {}
+};
 
-// Function to add history entry
-void addHistory(string entry) {
-    history.push_back(entry);
-}
+// 2. ENCAPSULATION: Data is kept private and accessed via public methods
+class Account {
+private:
+    float balance;
+    int pin;
+    vector<string> history;
 
-// Function to show transaction history
-void showHistory() {
-    if (history.empty()) {
-        cout << "\nNo transactions yet.\n";
-        return;
+public:
+    Account(float initialBalance, int initialPin) 
+        : balance(initialBalance), pin(initialPin) {}
+
+    bool verifyPin(int enteredPin) {
+        return enteredPin == pin;
     }
 
-    cout << "\n----- Transaction History -----\n";
-    for (int i = 0; i < history.size(); i++) {
-        cout << i + 1 << ". " << history[i] << endl;
+    void deposit(float amount) {
+        if (amount > 0) {
+            balance += amount;
+            history.push_back("Deposited: " + to_string(amount) + " Rs");
+            cout << "Successfully deposited " << amount << " Rs\n";
+        } else {
+            cout << "Invalid amount!\n";
+        }
     }
-    cout << "--------------------------------\n";
-}
 
-// Main program
+    // 3. POLYMORPHISM: Overloading or simple logic for withdrawal
+    virtual void withdraw(float amount) {
+        if (amount > 0 && amount <= balance) {
+            balance -= amount;
+            history.push_back("Withdrawn: " + to_string(amount) + " Rs");
+            cout << "Successfully withdrawn " << amount << " Rs\n";
+        } else {
+            cout << (amount > balance ? "Insufficient balance!" : "Invalid amount!") << endl;
+        }
+    }
+
+    void showBalance() {
+        cout << "\nYour Balance: " << balance << " Rs\n";
+        history.push_back("Checked Balance");
+    }
+
+    void showHistory() {
+        if (history.empty()) {
+            cout << "\nNo transactions yet.\n";
+            return;
+        }
+        cout << "\n--- Transaction History ---\n";
+        for (size_t i = 0; i < history.size(); i++) {
+            cout << i + 1 << ". " << history[i] << endl;
+        }
+    }
+};
+
+// 4. INHERITANCE: ATM class inherits from the Interface and manages an Account
+class ATM : public IATM {
+private:
+    Account* userAccount;
+
+public:
+    ATM(Account* acc) : userAccount(acc) {}
+
+    void showMenu() override {
+        int choice;
+        float amount;
+
+        while (true) {
+            cout << "\n----- OOP MINI ATM -----\n";
+            cout << "1. Check Balance\n2. Deposit\n3. Withdraw\n4. History\n5. Exit\n";
+            cout << "Choose: ";
+            cin >> choice;
+
+            switch (choice) {
+                case 1: userAccount->showBalance(); break;
+                case 2: 
+                    cout << "Enter deposit amount: "; cin >> amount;
+                    userAccount->deposit(amount); 
+                    break;
+                case 3: 
+                    cout << "Enter withdrawal amount: "; cin >> amount;
+                    userAccount->withdraw(amount); 
+                    break;
+                case 4: userAccount->showHistory(); break;
+                case 5: cout << "Exiting...\n"; return;
+                default: cout << "Invalid choice!\n";
+            }
+        }
+    }
+};
+
 int main() {
-    int enteredPin, attempts = 0, choice;
-    float amount;
+    Account myAcc(1000.0, 1234); // Creating an object
+    ATM myATM(&myAcc);           // Injecting account into ATM
 
-    // PIN Verification with 3 attempts
+    int enteredPin, attempts = 0;
     while (attempts < 3) {
-        cout << "Enter your 4-digit PIN: ";
+        cout << "Enter 4-digit PIN: ";
         cin >> enteredPin;
-
-        if (enteredPin == PIN) {
-            cout << "Access Granted!\n";
-            break;
+        if (myAcc.verifyPin(enteredPin)) {
+            myATM.showMenu();
+            return 0;
         } else {
             attempts++;
-            cout << "Incorrect PIN! Attempts left: " << 3 - attempts << endl;
+            cout << "Wrong PIN! Attempts left: " << 3 - attempts << endl;
         }
     }
-
-    if (attempts == 3) {
-        cout << "\nYour account is locked due to too many wrong attempts!\n";
-        return 0;
-    }
-
-    // Main ATM menu
-    while (true) {
-        cout << "\n----- MINI ATM -----\n";
-        cout << "1. Check Balance\n";
-        cout << "2. Deposit Money\n";
-        cout << "3. Withdraw Money\n";
-        cout << "4. Transaction History\n";
-        cout << "5. Exit\n";
-        cout << "Choose an option: ";
-        cin >> choice;
-
-        switch (choice) {
-        case 1:
-            cout << "\nYour Balance: " << balance << " Rs\n";
-            addHistory("Checked Balance");
-            break;
-
-        case 2:
-            cout << "\nEnter amount to deposit: ";
-            cin >> amount;
-
-            if (amount <= 0) {
-                cout << "Invalid amount!\n";
-            } else {
-                balance += amount;
-
-                addHistory("Deposited: " + to_string(amount) + " Rs");
-
-                cout << "Successfully deposited " << amount << " Rs\n";
-            }
-            break;
-
-        case 3:
-            cout << "\nEnter amount to withdraw: ";
-            cin >> amount;
-
-            if (amount <= 0) {
-                cout << "Invalid amount!\n";
-            }
-            else if (amount > balance) {
-                cout << "Insufficient balance!\n";
-            } 
-            else {
-                balance -= amount;
-
-                addHistory("Withdrawn: " + to_string(amount) + " Rs");
-
-                cout << "Successfully withdrawn " << amount << " Rs\n";
-            }
-            break;
-
-        case 4:
-            showHistory();
-            break;
-
-        case 5:
-            cout << "\nThank you for using the ATM!\n";
-            return 0;
-
-        default:
-            cout << "Invalid choice! Try again.\n";
-        }
-    }
-
+    cout << "Account Locked!\n";
     return 0;
 }
